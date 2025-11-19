@@ -1,45 +1,85 @@
-// 1. Tempo
+// 1. GLOBAL SETTINGS
 setcps(138/60/4)
 
-stack(
-  // --- DRUMS ---
-  s("bd*4").n(3).gain(1.3).clip(0.8),
+// ==========================================
+// 2. THE INSTRUMENTS (Building Blocks)
+// ==========================================
+
+// The Driving Kick
+const kick = s("bd*4").n(3).gain(1.3).clip(0.8)
+
+// The Percussion (Claps & Hats)
+const perc = stack(
   s("~ cp").n(1).gain(0.9).room(0.2),
   s("~ hh").n(8).gain(0.9).cut(1),
-  s("hh*16").n(0).gain(0.4).pan(0.3),
+  s("hh*16").n(0).gain(0.4).pan(0.3)
+)
 
-  // --- NEW: FX & FILLS ---
-  // 1. The Crash Cymbal: Hits ONLY on the 1st bar of the cycle
-  s("crash").n(0).gain("<0.8 0 0 0>").room(0.8),
+// The "Galloping" Bassline (Hard-coded notes for safety)
+const bass = note("<bb1 gb1 db1 ab1>")
+  .struct("~ t t t")
+  .s("sawtooth").lpf(1000).decay(0.2).gain(1.0)
 
-  // 2. The Snare Roll: Plays ONLY on the 4th bar
-  // We use [~ sn:2*8] to wait half a bar, then fire 8 snares quickly
-  s("[~ sn]*2").n(2).gain("<0 0 0 0.8>").clip(1).pan("<0.3 0.7>"),
+// The Pads (Atmosphere)
+const pads = note("<bb3 gb3 db3 ab3>")
+  .chord("<minor major major major>")
+  .s("sawtooth").lpf(3000).jux(rev).slow(2).gain(0.5)
 
-  // --- BASSLINE ---
-  note("<bb1 gb1 db1 ab1>")
-    .struct("~ t t t")
-    .s("sawtooth")
-    .lpf(1000)
-    .decay(0.2).sustain(0)
-    .gain(1.0),
+// The Lead Melody (Hard-coded notes)
+// We leave the filter (.lpf) OFF here so we can change it per section
+const lead = note("<[bb3 db4 f4 db4] [gb3 bb3 db4 bb3] [db4 f4 ab4 f4] [ab3 c4 eb4 c4]>")
+  .s("sawtooth").fast(2)
+  .decay(0.1).sustain(0)
+  .delay(0.5).delaytime(0.25).delayfeedback(0.5)
+  .gain(0.5)
 
-  // --- ATMOSPHERE ---
-  note("<bb3 gb3 db3 ab3>")
-    .chord("<minor major major major>")
-    .s("sawtooth")
-    .lpf(3000)
-    .jux(rev)
-    .slow(2)
-    .gain(0.5),
+// The Snare Roll (For the Build-up)
+const roll = s("sn*16").gain(sine.range(0, 0.8).slow(1))
 
-  // --- ARPEGGIO ---
-  note("<[bb3 db4 f4 db4] [gb3 bb3 db4 bb3] [db4 f4 ab4 f4] [ab3 c4 eb4 c4]>")
-    .s("sawtooth")
-    .fast(2)
-    .lpf(sine.range(600, 8000).slow(16))
-    .resonance(10)
-    .decay(0.1).sustain(0)
-    .delay(0.5).delaytime(0.25).delayfeedback(0.5)
-    .gain(0.5)
+// ==========================================
+// 3. THE SECTIONS (The Arrangement)
+// ==========================================
+
+// SECTION A: INTRO (Kick + Bass + Muffled Lead)
+const intro = stack(
+  kick,
+  bass,
+  lead.lpf(600).gain(0.4) // Muffled and quiet
+)
+
+// SECTION B: BREAKDOWN (No Kick + Pads + Sweeping Lead)
+const breakdown = stack(
+  pads,
+  // Filter sweeps UP from 600 to 8000 over 4 cycles
+  lead.lpf(sine.range(600, 8000).slow(4)).resonance(10) 
+)
+
+// SECTION C: BUILD-UP (Breakdown + Snare Roll)
+const buildup = stack(
+  pads,
+  lead.lpf(8000), // Fully bright now
+  roll            // The snare roll comes in
+)
+
+// SECTION D: THE DROP (Everything + Sidechain Pumping)
+const drop = stack(
+  kick,
+  perc,
+  bass,
+  // Add the "Pump" to the pads and lead only during the drop
+  pads.gain(sine.range(0.2, 0.6).fast(4)), 
+  lead.lpf(8000).gain(sine.range(0.3, 0.7).fast(4))
+)
+
+// ==========================================
+// 4. THE MASTER SEQUENCER
+// ==========================================
+
+// "cat" plays patterns in order.
+// We repeat the intro 2 times, breakdown 2 times, etc.
+cat(
+  intro, intro,          // 0:00 - Intro Groove
+  breakdown, breakdown,  // 0:15 - The Emotional Break
+  buildup,               // 0:30 - Tension
+  drop, drop, drop, drop // 0:40 - EUPHORIA
 )
